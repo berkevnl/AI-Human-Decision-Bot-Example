@@ -1,0 +1,14 @@
+merhaba|Merhaba, sana nasıl yardımcı olabilirim?
+nasılsın|İyiyim, teşekkürler! Sen nasılsın?
+iyiyim|İyi olmana sevindim. Bugün neyi planlıyoruz?
+yks sonuçları açıklandı|Harika! Sonucunu benimle paylaş ve planlamaya geçelim.
+86000 sıralama yaptım|Sonucun için tebrik ederim, 86000 sıralama bu yıl için gerçekten harika. Peki hangi bölüme ilgi duyuyorsun?
+yazılım mühendisliği|Yazılım Mühendisliği, son zamanlarda yapay zekanın gelişimi düşünülünce oldukça yerinde bir karar. Hangi şehirde yaşıyorsun?
+zonguldakta yaşıyorum|Anladım. İstersen senin için Zonguldak'a yakın olan, Yazılım Mühendisliği bölümü içeren kaliteli üniversiteleri araştırıp bir tercih listesi hazırlayabilirim. Ne dersin?
+öncesinde bazı sorularım var|Elbette, sorularını alabilirim. Böyle bir kararda aklında soru işareti kalmaması oldukça önemli.
+tercih listesi hazırla|Pekala. Sıralamana, bulunduğun şehre ve ilgi alanına göre Türkiye'deki tüm üniversiteleri analiz ettim ve 24 üniversitenin yer aldığı bir tercih listesi hazırladım. Birlikte inceleyelim:
+samsun|Samsun, özellikle öğrenci dostu olması ve üniversitelerinin köklülüğü ile bilinen bir şehirdir.
+istanbul|İstanbul, geniş üniversite imkanları sağlamakla birlikte yüksek yaşam maliyeti gerektirir.
+tıp|Tıp bölümü yoğun ve uzun süreli eğitim gerektirir, bolca latince ifade içerir.
+ankara|Ankara öğrenci dostu şehirlerden biridir.
+hukuk|Hukuk bölümü sözel analiz becerileri gerektirir.
