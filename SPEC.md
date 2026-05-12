@@ -1,38 +1,30 @@
 # Üniversite Tercih Danışmanı
 
-Öğrenci sınav sonucunu, hedeflerini, ilgi alanlarını, bulunduğu şehri ve benzer bilgileri bota yazar; bot ise bilgileri önceden belirlenmiş verilerle eşleyerek en uygun cevabı verip öğrenciye yardımcı olmaya çalışır veya uzman tercih danışmanına yönlendirir.
+Öğrenci sınav sonucunu, hedeflerini, ilgi alanlarını, bulunduğu şehri ve benzer bilgileri bota yazar; bot ise girdiyi `data.py` sözlüğündeki anahtarlarla Levenshtein mesafe algoritması kullanarak eşleyip en uygun cevabı verir. Eşleşme bulunamazsa `expert.py` üzerinden uzman danışmandan görüş alır.
 
 ## Hedef Kitle
 
 Hedef kitle, üniversite adayı öğrencilerdir. Bu öğrenciler, üniversite sınavı sonuçlarının açıklanmasının ardından isteklerine en uygun ve doğru tercih listesini elde edebilmek için bu botu kullanır.
 
-# Modlar
+## Çalışma Mantığı
 
-## HOOTL (Human-Out-Of-The-Loop)
+Sistem tek bir çalıştırmayla yürütülür; ayrı mod argümanı gerekmez.
 
-Bu modda bot, öğrenci ile olan iletişimine göre sürdürülür ve gerekli dönütler bot tarafından otomatik olarak verilir.
+Bot, öğrenciden gelen her girdiyi `data.py` sözlüğündeki anahtarlarla Levenshtein mesafe algoritması aracılığıyla karşılaştırır:
 
-Süreçte uzmandan herhangi bir onay istenmez, tamamen bot tarafından yürütülür.
+- **Mesafe = 0** → Kesin eşleşme; karşılık gelen yanıt doğrudan verilir.
+- **Mesafe ≤ 3** → Yakın eşleşme; "Bunu mu demek istediniz?" öneri akışı devreye girer.
+- **Mesafe > 3** → Eşleşme yok; talep TCP socket aracılığıyla `expert.py`'ye iletilir. Uzman `[Öneri]:` satırına yanıtını girer, yanıt bota döner ve `kayitli_mesajlar` sözlüğüne önbelleğe alınır. Aynı mesaj tekrar geldiğinde uzmana sorulmadan önbellekteki yanıt kullanılır.
 
-Kesin, duygusallıktan uzak ve genel veriler karşısında doğru yanıt; duygusallık içeren, genelden uzak ve daha spesifik veriler karşısında hata yapmaya meyilli olacaktır.
+## Performans
 
-## HOTL (Human-On-The-Loop)
+`levenshtein_mesafesi` fonksiyonu saf özyinelemeli olarak yazıldığında her çağrı üç alt çağrı açar; aynı `(mesaj[i:], anahtar[j:])` alt sorunları tekrar tekrar hesaplanır.
 
-Bu mod çoğunlukla botun;
-- Emin olamadığı
-- Riskli gördüğü
-- Standart verilerle çözemediği
-durumlarda devreye girer.
+`functools.lru_cache(maxsize=None)` dekoratörü ile her `(mesaj, anahtar)` string çifti yalnızca bir kez hesaplanır ve önbelleğe alınır:
 
-Öğrencinin;
-- "Tıp istiyorum ama biyolojiden nefret ediyorum."
-- "Yazılım mı hukuk mu psikoloji mi hiçbir fikrim yok."
-- "Ailem tıp okumamı istiyor, ben işletme istiyorum."
-- "Sevgilimle okumak istiyorum."
-- "Bu tercih tüm hayatımı değiştirecek."
-- "Bu üniversitenin ortamı gerçekten nasıl?"
-tarzda ifadeleri veya sağlık problemi, ekonomik durum, şehir zorunluluğu gibi özel durumlar karşısında bot, riskli bir karar alıp hata yapmak istemeyeceği için öğrenciyi uzman bir danışmana yönlendirir.
+| Durum | Zaman Karmaşıklığı |
+|---|---|
+| Memoization yok (saf özyineleme) | O(3ⁿ) |
+| `lru_cache` ile memoized | O(m × n) |
 
-## HITL (Human-In-The-Loop)
-
-Bu modda operatör, *Uzman Tercih Danışmanı*'dır. Süreç HOOTL modundaki gibi öğrenci ve bot iletişimine göre sürdürülür. Operatör, aktif olarak sürecin içerisinde yer alır ve botun her yanıtını yönetme hakkına sahiptir.
+`lru_cache` yalnızca hashable tipler üzerinde çalışır; Python stringleri immutable ve hashable olduğundan bu kullanım için doğal uyumludur.

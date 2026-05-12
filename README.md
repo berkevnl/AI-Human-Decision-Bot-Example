@@ -6,7 +6,7 @@
 
 ## Amaç
 
-Bu çalışma, bir chatbot sisteminde **insanın karar sürecine ne ölçüde dahil edilmesi gerektiği** sorusunu araştırmaktadır. Bunun için farklı otomasyon seviyelerine sahip üç çalışma modu tanımlanmış ve bu modlar üniversite tercih danışmanlığı senaryosu üzerinden somutlaştırılmıştır.
+Bu çalışma, bir chatbot sisteminde **insanın karar sürecine ne ölçüde dahil edilmesi gerektiği** sorusunu araştırmaktadır. Sistem, otomatik eşleştirme ile uzman müdahalesini tek bir akışta birleştirerek üniversite tercih danışmanlığı senaryosu üzerinden somutlaştırılmıştır.
 
 ---
 
@@ -14,38 +14,27 @@ Bu çalışma, bir chatbot sisteminde **insanın karar sürecine ne ölçüde da
 
 Sistem iki bileşenden oluşur:
 
-- **`bot.py`** — Öğrenciyle diyalog kuran bileşen. `bilgi.txt` dosyasındaki anahtar–yanıt eşleşmelerini kullanarak girilen mesajlara cevap üretir.
-- **`operator.py`** — HITL modunda çalışan uzman paneli. Botun önereceği yanıtları, uzmanın onayına sunar.
+- **`bot.py`** — Öğrenciyle diyalog kuran bileşen. `data.py` dosyasındaki anahtar–yanıt eşleşmelerini ve Levenshtein mesafe algoritmasını kullanarak girilen mesajlara en yakın yanıtı üretir. Eşleşme bulunamazsa uzmana sorar ve yanıtı önbelleğe alır.
+- **`expert.py`** — Uzman paneli. Botun yanıt üretemediği mesajlar için uzmanın görüşünü alır ve socket üzerinden bota iletir.
 
-Botun bilgi tabanı (`bilgi.txt`) düz metin formatında, `anahtar|yanıt` eşleşmeleri içeren satırlardan oluşur. Anahtar kelime öğrencinin mesajında geçiyorsa bot karşılık gelen yanıtı kullanır.
+`bot.py` ile `expert.py` arasındaki iletişim **TCP socket** üzerinden gerçekleşir.
 
----
-
-## Çalışma Modları
-
-| Mod | Açıklama |
-|-----|----------|
-| **HOOTL** *(Human-Out-Of-The-Loop)* | Tamamen otomatik. İnsan müdahalesi yoktur; bot tüm kararları kendi verir. |
-| **HOTL** *(Human-On-The-Loop)* | Bot yine de otomatik çalışır; ancak duygusal veya riskli ifadeler tespit edildiğinde süreci durdurarak öğrenciyi uzmana yönlendirir. |
-| **HITL** *(Human-In-The-Loop)* | Botun her yanıtı, gönderilmeden önce uzmanın onayından geçer. Uzman "E" derse yanıt iletilir, "H" derse bot farklı bir yanıt arar. |
+Botun bilgi tabanı (`data.py`) Python sözlüğü formatında, `"anahtar": "yanıt"` eşleşmeleri içerir. Levenshtein mesafesi sıfır ise kesin eşleşme, 3 veya altında ise "Bunu mu demek istediniz?" öneri akışı, daha yüksekse uzman yönlendirmesi devreye girer.
 
 ---
+
 
 ## Çalıştırma
 
 ```bash
-# HOOTL modu
-python bot.py hootl
+# Önce expert.py'yi ayrı bir terminalde başlatın
+python expert.py
 
-# HOTL modu
-python bot.py hotl
-
-# HITL modu (önce operator.py'yi ayrı bir terminalde başlatın)
-python operator.py
-python bot.py hitl
+# Ardından bot.py'yi başlatın
+python bot.py
 ```
 
-HITL modunda `bot.py` ve `operator.py` **eş zamanlı** çalıştırılmalıdır. İki süreç, `soru.txt` ve `cevap.txt` geçici dosyaları üzerinden haberleşir.
+`bot.py` başlatıldığında `expert.py`'nin zaten çalışıyor ve bağlantı bekliyor olması gerekir.
 
 ---
 
@@ -53,17 +42,30 @@ HITL modunda `bot.py` ve `operator.py` **eş zamanlı** çalıştırılmalıdır
 
 ```
 AI-Human-Decision-Bot-Example/
-├── bot.py                          # Ana bot mantığı (3 mod)
-├── operator.py                     # Uzman onay paneli (HITL için)
-├── bilgi.txt                       # Anahtar-yanıt bilgi tabanı
-├── SPEC.md                         # Sistem spesifikasyonu
-├── rapor.pdf                       # Araştırma raporu
+├── bot.py          # Ana bot mantığı: Levenshtein eşleştirme + socket istemcisi
+├── expert.py       # Uzman paneli: socket sunucusu
+├── data.py         # Anahtar-yanıt bilgi tabanı (Python sözlüğü)
+├── SPEC.md         # Sistem spesifikasyonu
+├── rapor.pdf       # Araştırma raporu
 ├── README.md
-└── arastirma/                      # Referans ekran görüntüleri
-    ├── humworkai_mainpage.png          # Humwork AI ana sayfa
-    ├── hireahuman_launch_linkedin.png  # HireAHuman – LinkedIn duyurusu
-    └── hireahuman_maintenance.png      # HireAHuman – bakım modu ekranı
+└── arastirma/      # Referans ekran görüntüleri
+    ├── humworkai_mainpage.png
+    ├── hireahuman_launch_linkedin.png
+    └── hireahuman_maintenance.png
 ```
+
+---
+
+## Performans
+
+Levenshtein mesafe fonksiyonu saf özyineleme ile implement edildiğinde **O(3ⁿ)** üstel zaman karmaşıklığına sahipti: aynı `(mesaj[i:], anahtar[j:])` alt sorunları defalarca yeniden hesaplanıyordu.
+
+`functools.lru_cache` dekoratörü eklenerek her `(mesaj, anahtar)` çifti **yalnızca bir kez** hesaplanıp önbelleğe alınır. Bu sayede karmaşıklık **O(m × n)** düzeyine iner (m ve n, karşılaştırılan stringlerin uzunlukları).
+
+| Durum | Zaman Karmaşıklığı |
+|---|---|
+| Memoization yok (saf özyineleme) | O(3ⁿ) |
+| `lru_cache` ile memoized | O(m × n) |
 
 ---
 
@@ -72,5 +74,6 @@ AI-Human-Decision-Bot-Example/
 Bu proje kavramsal düzeyde bir prototiptir; üretim ortamı için tasarlanmamıştır:
 
 - Bilgi tabanı statik ve sınırlıdır; gerçek bir NLP/LLM motoru içermez.
-- Süreçler arası iletişim dosya tabanlıdır (gerçek sistemde bir mesaj kuyruğu kullanılır).
-- Hata yönetimi ve güvenlik katmanları minimumda tutulmuştur.
+- Levenshtein algoritması özyinelemeli olarak implement edilmiştir; `functools.lru_cache` ile memoize edildiğinden tekrarlanan alt sorunlar önbellekten döndürülür (bkz. **Performans** bölümü).
+- Süreçler arası iletişim socket tabanlıdır; hata yönetimi ve güvenlik katmanları minimumda tutulmuştur.
+
