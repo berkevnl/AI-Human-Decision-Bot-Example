@@ -4,7 +4,7 @@ import socket
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 # IP ve Port bağlama
-server_socket.bind(('localhost', 65432))
+server_socket.bind(('localhost', 65435))
 
 # Dinlemeye başlama
 server_socket.listen()

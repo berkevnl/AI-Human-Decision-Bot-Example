@@ -12,14 +12,14 @@ Bu çalışma, bir chatbot sisteminde **insanın karar sürecine ne ölçüde da
 
 ## Nasıl Çalışır?
 
-Sistem iki bileşenden oluşur:
+Sistem iki ana bileşen ve iki veri dosyasından oluşur:
 
-- **`bot.py`** — Öğrenciyle diyalog kuran bileşen. `data.py` dosyasındaki anahtar–yanıt eşleşmelerini ve Levenshtein mesafe algoritmasını kullanarak girilen mesajlara en yakın yanıtı üretir. Eşleşme bulunamazsa uzmana sorar ve yanıtı önbelleğe alır.
+- **`bot.py`** — Öğrenciyle diyalog kuran bileşen. `bilgi.json` dosyasındaki anahtar–yanıt eşleşmelerini ve Levenshtein mesafe algoritmasını kullanarak girilen mesajlara en yakın yanıtı üretir. Eşleşme bulunamazsa uzmana sorar ve yanıtı `onbellek.json` dosyasına kaydederek kalıcı olarak önbelleğe alır.
 - **`expert.py`** — Uzman paneli. Botun yanıt üretemediği mesajlar için uzmanın görüşünü alır ve socket üzerinden bota iletir.
 
-`bot.py` ile `expert.py` arasındaki iletişim **TCP socket** üzerinden gerçekleşir.
+`bot.py` ile `expert.py` arasındaki iletişim **TCP socket** (varsayılan port: `65435`) üzerinden gerçekleşir.
 
-Botun bilgi tabanı (`data.py`) Python sözlüğü formatında, `"anahtar": "yanıt"` eşleşmeleri içerir. Levenshtein mesafesi sıfır ise kesin eşleşme, 3 veya altında ise "Bunu mu demek istediniz?" öneri akışı, daha yüksekse uzman yönlendirmesi devreye girer.
+Botun bilgi tabanı (`bilgi.json`) JSON formatında, `"anahtar": "yanıt"` eşleşmeleri içerir. Levenshtein mesafesi sıfır ise kesin eşleşme, 3 veya altında ise "Bunu mu demek istediniz?" öneri akışı, daha yüksekse uzman yönlendirmesi devreye girer.
 
 ---
 
@@ -42,9 +42,10 @@ python bot.py
 
 ```
 AI-Human-Decision-Bot-Example/
-├── bot.py          # Ana bot mantığı: Levenshtein eşleştirme + socket istemcisi
+├── bot.py          # Ana bot mantığı: Levenshtein eşleştirme + socket istemcisi + JSON yönetimi
 ├── expert.py       # Uzman paneli: socket sunucusu
-├── data.py         # Anahtar-yanıt bilgi tabanı (Python sözlüğü)
+├── bilgi.json      # Anahtar-yanıt bilgi tabanı (JSON formatında)
+├── onbellek.json   # Uzmandan öğrenilen yanıtların kalıcı önbelleği (JSON formatında)
 ├── SPEC.md         # Sistem spesifikasyonu
 ├── rapor.pdf       # Araştırma raporu
 ├── README.md

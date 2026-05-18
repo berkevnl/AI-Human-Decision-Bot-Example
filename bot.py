@@ -1,9 +1,33 @@
-from data import *
 import socket
+import json
+import os
 from functools import lru_cache
 
-# Uzman önerilerinin tekrardan aynı mesajın yazılabilme ihtimaline karşı kaydedileceği sözlük
-kayitli_mesajlar = {}
+# Veri dosyaları yolları
+BILGI_DOSYASI = "bilgi.json"
+ONBELLEK_DOSYASI = "onbellek.json"
+
+# JSON dosyalarını okuma fonksiyonu
+def json_oku(dosya_yolu):
+    if not os.path.exists(dosya_yolu):
+        return {}
+    try:
+        with open(dosya_yolu, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return {}
+
+# JSON dosyalarına yazma fonksiyonu
+def json_yaz(dosya_yolu, veri):
+    try:
+        with open(dosya_yolu, "w", encoding="utf-8") as f:
+            json.dump(veri, f, ensure_ascii=False, indent=4)
+    except IOError as e:
+        print(f"Dosya yazma hatası: {e}")
+
+# Verileri yükle
+data = json_oku(BILGI_DOSYASI)
+mesaj_onbellek = json_oku(ONBELLEK_DOSYASI)
 
 # Levenshtein Mesafe Algoritması (lru_cache ile memoized — O(m×n))
 @lru_cache(maxsize=None)
@@ -29,18 +53,22 @@ def en_yakin_anahtari_bul(mesaj, anahtarlar):
     return en_yakin, minimum
 
 # Bottan (istemci) uzmana (sunucu) mesajı ilet ve yanıtı al
-def uzman_bot_iletisim(mesaj, kayitli_mesajlar):
-    talep = f"[BOT] '{mesaj}' girdisiyle eşleşen bir veri bulamadım. Öğrenciye nasıl yanıt vermeliyim?"
+def uzman_bot_iletisim(mesaj):
+    talep = f"[BOT] Öğrenciden gelen '{mesaj}' mesajı için cevap vermem uygun olmaz. Nasıl yanıt vermeliyim?"
     client_socket.sendall(talep.encode('utf-8'))  # Bot talebini istemciden sunucuya gönder
     yanit = client_socket.recv(1024)  # Sunucudan gelen yanıtı al
-    kayitli_mesajlar[mesaj] = yanit.decode('utf-8')  # Tekrar aynı mesaj gelirse yanıtlanabilmesi için kaydet
-    return yanit
+    if yanit:
+        yanit_str = yanit.decode('utf-8')
+        mesaj_onbellek[mesaj] = yanit_str  # Hafızada güncelle
+        json_yaz(ONBELLEK_DOSYASI, mesaj_onbellek)  # Kalıcı belleğe kaydet (onbellek.json)
+        return yanit_str
+    return None
 
 # Uzmandan (sunucudan) alınan yanıtın mantıksal kontrolleri
-def yanit_kontrol(mesaj, kayitli_mesajlar):
-    yanit = uzman_bot_iletisim(mesaj, kayitli_mesajlar)
-    if yanit:
-        print(f"Bot: {yanit.decode('utf-8')}")
+def yanit_kontrol(mesaj):
+    yanit_str = uzman_bot_iletisim(mesaj)
+    if yanit_str:
+        print(f"[UZMAN GÖRÜŞÜ]: {yanit_str}")
     else:
         print(f"Bot: Şu an için isteğinizi yerine getiremiyorum.")
 
@@ -48,16 +76,16 @@ def yanit_kontrol(mesaj, kayitli_mesajlar):
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 # Sunucuya bağlanma
-client_socket.connect(('localhost', 65432))
+client_socket.connect(('localhost', 65435))
 
 # Ana döngü
 try:
     while True:
         minimum = 999
-        mesaj = input("Öğrenci: ")
+        mesaj = input("Öğrenci: ").lower()
         mevcut_anahtar, minimum = en_yakin_anahtari_bul(mesaj, data.keys())
-        if kayitli_mesajlar.get(mesaj):  # Mesaj önceden kaydedilmiş mi kontrol et
-            print(f"Bot: {kayitli_mesajlar[mesaj]}")
+        if mesaj_onbellek.get(mesaj):  # Mesaj önceden kaydedilmiş mi kontrol et
+            print(f"Bot: {mesaj_onbellek[mesaj]}")
         elif minimum == 0:
             print(f"Bot: {data[mevcut_anahtar]}")
         elif minimum <= 3:
@@ -67,12 +95,12 @@ try:
                     print(f"Bot: {data[mevcut_anahtar]}")
                     break
                 elif onay.lower() in ["h", "hayır"]:
-                    yanit_kontrol(mesaj, kayitli_mesajlar)  # Öğrenci 'hayır' derse mesajı uzmana ilet
+                    yanit_kontrol(mesaj)  # Öğrenci 'hayır' derse mesajı uzmana ilet
                     break
                 else:
                     print(f"Bot: Size yardımcı olabilmem için lütfen doğru şekilde yanıtlayın.")
         else:
-            yanit_kontrol(mesaj, kayitli_mesajlar)
+            yanit_kontrol(mesaj)
 except KeyboardInterrupt:
     print("\nBağlantı kapatılıyor...")
 finally:
